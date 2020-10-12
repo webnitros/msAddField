@@ -1,0 +1,5 @@
+Changelog for msAddField.
+
+1.0.0-beta
+==============
+- New build script.

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model package="msaddfield" baseClass="xPDOObject" platform="mysql" defaultEngine="InnoDB" phpdoc-package="msaddfield"
+       version="1.1">
+
+    <object class="msafField" table="msaf_field" extends="xPDOSimpleObject">
+        <field key="name" dbtype="varchar" precision="255" phptype="string" null="false" default=""/>
+        <field key="title" dbtype="varchar" precision="255" phptype="string" null="false" default=""/>
+        <field key="help" dbtype="varchar" precision="255" phptype="string" null="false" default=""/>
+        <field key="type" dbtype="varchar" precision="255" phptype="string" null="false" default=""/>
+        <field key="show_card" dbtype="tinyint" precision="1" phptype="integer" null="true" default="1"/>
+        <field key="indexes" dbtype="tinyint" precision="1" phptype="integer" null="true" default="1"/>
+        <field key="active" dbtype="tinyint" precision="1" phptype="integer" null="true" default="1"/>
+
+        <index alias="name" name="name" primary="false" unique="false" type="BTREE">
+            <column key="name" length="" collation="A" null="false"/>
+        </index>
+    </object>
+
+</model>

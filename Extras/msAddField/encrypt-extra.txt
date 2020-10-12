@@ -1,0 +1,146 @@
+По правилам <strong>modstore.pro</strong> каждое дополнение приобретается для одного сайта. Но транспортные пакеты MODX можно скачивать с сайта и устанавливать где угодно. Поэтому, купив дополнение один раз, пользователь может устанавливать его на сколько угодно сайтов.
+
+В нашем репозитории реализован API для защиты платных дополнений. Благодаря этому вы можете внедрить проверку того, был ли компонент приобретён для текущего сайта. Для проверки подлинности пакета, отправьте POST запрос на адрес <em><a href="https://modstore.pro/extras/package/decode/install">https://modstore.pro/extras/package/decode/install</a></em>:
+
+<code><?php
+$api_url = 'https://modstore.pro/extras/package/decode/install';
+$params = http_build_query([
+    'package' => 'sampleExtra',     // Название дополнения
+    'http_host' => 'website.ru',   // Адрес сайта
+    'username' => 'user@email.ru', // E-mail пользователя
+    'api_key' => '99b21f87a20ccb774e2697054f3922b7' // Ключ сайта
+    'version' => '1.0.0-pl', // Версия пакета
+    'vehicle_version' => '2.0.0' // Версия API
+
+]);
+$curl = curl_init($api_url);
+curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($curl, CURLOPT_POSTFIELDS, $params);
+
+// Ответ придёт в виде XML
+$data = new SimpleXMLElement(curl_exec($curl));
+if (!empty($data->key)) {
+    print 'Key: ' . $data->key;
+}
+curl_close($curl);</code>
+
+Если в ответе присутствует ключ, значит пакет был приобретён именно для текущего сайта.
+
+Вы можете использовать эту проверку в любом месте дополнения, но помните, что её можно просто удалить вручную из PHP-кода транспортного пакета. Чтобы не допустить этого, нужно зашифровать файлы с использованием полученного ключа. В этом случае простое удаление проверки ничего не даст - файлы так и останутся зашифрованными и пакет установить не получится.<h2>Пример реализации</h2>Вот один из способов зашифровать транспортный пакет.
+
+<h3>1. Подготовка репозитория</h3>
+После того, как вы создали первую версию дополнения, необходимо загрузить её в <strong><a href="https://modstore.pro/office/packages#office/packages/add">modstore.pro</a></strong>. 
+Заполните название, описание, прикрепите транспортный пакет и отправьте его на модерацию. В сообщении для модератора можете попросить пока не публиковать дополнение, чтобы у вас было достаточно времени для встраивания и тестирования защиты.
+
+Теперь нужно <a href="https://modstore.pro/office/keys#office/keys/add">создать ключ для сайта</a> - он потребуется, чтобы получить ключ шифрования для нашего пакета.<h3>
+2. Получение ключа шифрования</h3>
+Когда подготовка будет завершена, можно проверить, что API действительно отдаёт ключ шифрования. 
+Для этого в файле <strong>_build/build.php</strong> сразу после вызова метода <strong>createPackage</strong> добавим такие строки:
+
+<code>
+$username = 'user@email.ru'; // Укажите свой аккаунт
+$api_key = '99b21f87a20ccb774e2697054f3922b7'; // и свой ключ сайта
+
+$client = $this->modx->getService('rest.modRestCurlClient');
+$result = $client->request('https://modstore.pro/extras/package/', 'encode', 'POST', array(
+    'package' => $this->config['name'],
+    'http_host' => $this->modx->getOption('http_host'),
+    'username' => $username,
+    'api_key' => $api_key,
+    'version' => $this->config['version'] . '-' . $this->config['release'],
+    'vehicle_version' => '2.0.0'
+), array('contentType' => 'application/xml'));
+$data = new SimpleXMLElement($result);
+if (!empty($data->key)) {
+    $this->modx->log(modX::LOG_LEVEL_INFO, 'Key: ' . $data->key);
+} elseif (!empty($data->message)) {
+    $this->modx->log(modX::LOG_LEVEL_INFO, 'Error: ' . $data->message);
+}
+exit;</code>
+
+После этого запустите файл <strong>_build/build.php</strong> - Если отобразится полученный ключ шифрования, значит всё OK. Если нет, возможно, в вашем пакете название, версия и релиз хранятся в других переменных. 
+Проверьте и замените <strong>$this->config['name']</strong>, <strong>$this->config['version']</strong> и <strong>$this->config['release']</strong>.
+
+<blockquote><strong>Примечание.</strong> 
+
+Если вы являетесь автором дополнения, то ключ шифрования будет получен даже без факта покупки.</blockquote><h3>
+
+3. Добавление php-класса для шифрования</h3>
+В папке <strong>_build/resolvers/</strong> создайте файл <strong>encryption.php</strong>:
+
+<code>
+<?php
+$transport->xpdo->loadClass('transport.xPDOObjectVehicle', XPDO_CORE_PATH, true, true);
+$transport->xpdo->loadClass('EncryptedVehicle', MODX_CORE_PATH . 'components/' . strtolower($transport->name) . '/model/', true, true);
+</code>
+
+
+В папку <strong>core/components/НАЗВАНИЕ/model/</strong> 
+загрузите файл <a href="https://gist.githubusercontent.com/bezumkin/7eb7b508e033f04ea6ab5769c1e74c52/raw/059ba688c9822fcd7e213431b1a993a7e4789661/encryptedvehicle.class.php">encryptedvehicle.class.php</a>
+
+Вместо <strong>exit;</strong> в предыдущем фрагменте кода добавьте "запаковку" этих файлов (потому что они должны распаковаться самым первым):
+<code>
+define('PKG_ENCODE_KEY', $data->key);
+$this->builder->package->put(array(
+    'source' => $this->config['core'] . 'model/encryptedvehicle.class.php',
+    'target' => "return MODX_CORE_PATH . 'components/" . $this->config['name_lower'] . "/model/';",
+), array('vehicle_class' => 'xPDOFileVehicle', xPDOTransport::UNINSTALL_FILES => false));
+
+$this->builder->putVehicle($this->builder->createVehicle(array(
+    'source' => $this->config['resolvers'] . 'encryption.php',
+), array('vehicle_class' => 'xPDOScriptVehicle')));
+
+$this->modx->loadClass('transport.xPDOObjectVehicle', XPDO_CORE_PATH, true, true);
+require_once $this->config['core'] . 'model/encryptedvehicle.class.php';</code>
+
+Из-за того, что в старой и новой версии msAddField есть различия, вам придётся вникнуть в код и правильно указать названия переменных. Например, в старой версии:
+<ul>
+<li>вместо <strong>$this->builder</strong> будет просто <strong>$builder</strong>,</li>
+<li>вместо <strong>$this->config['name_lower']</strong> будет <strong>PKG_NAME_LOWER</strong>,</li>
+<li>а вместо <strong>$this->config['build']</strong> - <strong>$sources['build']</strong>.</li>
+</ul>
+
+Теперь надо позаботиться о корректной денисталяции пакета. Во время денисталяции все операции запускаются в обратном порядке. Поэтому файл <strong>_build/resolvers/encryption.php</strong> нужно подключить в самом конце - перед командой <strong>$this->builder->pack()</strong>:
+<code>
+// Повторно подключаем резолвер
+$this->builder->putVehicle($this->builder->createVehicle(array(
+    'source' => $this->config['resolvers'] . 'encryption.php',
+), array('vehicle_class' => 'xPDOScriptVehicle')));
+
+// Дальше оставляем всё как было
+$this->modx->log(modX::LOG_LEVEL_INFO, 'Packing up transport package zip...');
+$this->builder->pack();</code>
+<h3>4. Зашифровка пакета</h3>Проверьте, что работоспособность файла не нарушена, что пакет действительно создаётся. Скачайте транспортный пакет из папки <strong>/core/packages/</strong> к себе на компьютер и распакуйте его. Откройте папку <strong>modCategory</strong>, а в ней - файл, который заканчивается на <strong>.vehicle</strong>. Просмотрите его - в нём находятся все чанки, сниппеты, плагины нашего дополнения (найдите массивы <strong>Chunks</strong>, <strong>Snippets</strong> и прочие - внутри элементов <strong>object</strong> находится JSON всех устанавливаемых объектов).
+
+Именно этот файл мы и будем зашифровывать. В <strong>_build/build.php</strong> найдите место, где создаётся категория (modCategory). 
+Нас интересует массив <strong>category_attributes</strong> (или $attr). Просто добавьте в этот массив два новых ключа:
+<code>
+'vehicle_class' => 'encryptedVehicle',
+xPDOTransport::ABORT_INSTALL_ON_VEHICLE_FAIL => true,
+</code>
+
+Запускаем <em>_build/build.php</em> и снова скачиваем транспортный пакет. Теперь в этом файле самих объектов нет, зато появились поля <strong>object_encrypted</strong> и <strong>related_objects_encrypted</strong>. Именно в этих полях и содержатся наши чанки, сниппеты и пр., только они теперь зашифрованы и установить дополнение без ключа не получится.
+
+Но код элементов, в дополнение, обычно хранится внутри папки <strong>/core/components/НАЗВАНИЕ/elements/</strong>. Их можно переместить, например, в <strong>/_build/source/</strong>, после чего нужно найти все места в скрипте-сборщике, где указан путь к элементам, и изменить его. Например, вот здесь:
+<code>$objects[$name] = $this->modx->newObject('modChunk');
+$objects[$name]->fromArray(array_merge([
+    'id' => 0,
+    'name' => $name,
+    'description' => @$data['description'],
+    /**
+    * Меняем путь к коду чанка
+    * 'snippet' => $this::_getContent($this->config['core'] . 'elements/chunks/' . $data['file'] . '.tpl'),
+    **/
+    'snippet' => $this::_getContent($this->config['build'] . 'source/chunks/' . $data['file'] . '.tpl'),
+    'static' => !empty($this->config['static']['chunks']),
+    'source' => 1,
+    'static_file' => 'core/components/' . $this->config['name_lower'] . '/elements/chunks/' . $data['file'] . '.tpl',
+], $data), '', true, true);</code>
+
+Ну и придётся сделать ваши элементы НЕ статичными (ведь файла для них физически на сайте пользователя не будет).
+
+<h3>5. Проверка работоспособности</h3>
+
+Чтобы установить зашифрованный пакет на сайте, нужно сначала проверить, что у провайдера <strong>modstore.pro</strong> указан ваш логин и ключ сайта. А потом привязать локальный пакет к провайдеру. Для этого перед установкой нажмите кнопку "Показать детали", выберите поставщика <strong>modstore.pro</strong> и сохраните изменения.
+
+Если после всех манипуляций пакет успешно установился, можно загрузить его в репозиторий вместо старой версии и написать модератору, что дополнение можно публиковать. Если вы встраиваете защиту в уже опубликованное дополнение, то лучше поменять номер версии и выпустить пакет в виде обновления.
