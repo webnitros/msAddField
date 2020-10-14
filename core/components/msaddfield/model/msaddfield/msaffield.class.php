@@ -1,6 +1,6 @@
 <?php
 class msafField extends xPDOSimpleObject {
-    /* @var msAddFieldFieldManagement $manager */
+    /* @var msAddFieldManagement $manager */
     protected $manager = null;
 
     public $metaData = array(
@@ -333,7 +333,7 @@ class msafField extends xPDOSimpleObject {
     }
 
     /**
-     * @return bool|msAddFieldFieldManagement
+     * @return bool|msAddFieldManagement
      */
     private function getManager()
     {

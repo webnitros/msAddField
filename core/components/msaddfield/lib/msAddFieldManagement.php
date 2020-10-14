@@ -1,30 +1,29 @@
 <?php
 
-class msAddFieldFieldManagement
+class msAddFieldManagement
 {
     /* @var msAddField $msix */
-    public $msix = null;
+    public $msix;
 
     /* @var modX $modx */
-    public $modx = null;
+    public $modx;
 
     /* @var string $field */
-    private $field = null;
-    private $className = null;
-    /* @var string $meta */
-    private $meta = null;
+    private $field;
+    /* @var array $meta */
+    private $meta;
     /* @var string $field */
-    private $fieldClear = null;
-    private $prefix = null;
-    private $columns = null;
+    private $fieldClear;
+    private $prefix;
+    private $columns;
 
     /* @var string $table */
-    private $table = null;
+    private $table;
 
     /**
      * @param msAddField $msix
      */
-    function __construct(msAddField &$msix)
+    public function __construct($msix)
     {
         $this->msix = $msix;
         $this->modx = $msix->modx;
@@ -36,12 +35,11 @@ class msAddFieldFieldManagement
      * @param string $className
      * @param string|null $prefix
      * @param array|null $meta
-     * @return bool|msAddFieldFieldManagement
+     * @return bool|msAddFieldManagement
      */
     public function process($className, $field, $prefix = null, $meta = null)
     {
         $this->columns = null;
-        $this->className = $className;
         $this->meta = $meta;
         $this->prefix = $prefix;
         $this->fieldClear = $field;
@@ -76,7 +74,7 @@ class msAddFieldFieldManagement
     public function hasField()
     {
         $fields = $this->showFields();
-        if (array_search($this->fieldClear, $fields)) {
+        if (in_array($this->fieldClear, $fields, true)) {
             return true;
         }
         return false;
@@ -120,7 +118,7 @@ class msAddFieldFieldManagement
             $precision = $this->meta['precision'];
             $default = is_null($this->meta['default']) ? 'NULL' : $this->meta['default'];
 
-            if ((empty($default) and $default != 0) and !empty($this->meta['null'])) {
+            if ((empty($default) && $default !== 0) && !empty($this->meta['null'])) {
                 $default = NULL;
             }
 
@@ -133,9 +131,9 @@ class msAddFieldFieldManagement
 
 
     /**
-     * @param string $name
-     * @param string $className
+     * Удаление поля
      * @return bool
+     * @throws Exception
      */
     public function removeField()
     {
@@ -152,10 +150,8 @@ class msAddFieldFieldManagement
      */
     public function addIndex()
     {
-        if ($this->hasField()) {
-            if (!$this->hasIndex()) {
-                $this->sql("ALTER TABLE {$this->table} ADD INDEX ({$this->field})", __METHOD__);
-            }
+        if ($this->hasField() && !$this->hasIndex()) {
+            $this->sql("ALTER TABLE {$this->table} ADD INDEX ({$this->field})", __METHOD__);
         }
         return $this;
     }
@@ -165,17 +161,19 @@ class msAddFieldFieldManagement
      */
     public function hasIndex()
     {
-        if ($this->table and $this->field) {
+        if ($this->table && $this->field) {
             $q = $this->modx->prepare("SHOW INDEX FROM {$this->table} WHERE key_name = '{$this->fieldClear}';");
             $q->execute();
             $rows = $q->fetchAll(PDO::FETCH_ASSOC);
-            return count($rows) > 0 ? true : false;
+            return count($rows) > 0;
         }
         return false;
     }
 
     /**
+     * Удаление индекса
      * @return bool
+     * @throws Exception
      */
     public function removeIndex()
     {
@@ -186,67 +184,23 @@ class msAddFieldFieldManagement
     }
 
     /**
-     *
-     */
-    public function generateMap()
-    {
-        $manager = $this->getManager();
-        $map = array('fields' => array(), 'fieldMeta' => array());
-        if ($manager) {
-            $q = $this->modx->newQuery('msfmFields');
-            $q->where(array('enable' => 1));
-            $q->sortby('rank', 'ASC');
-            if ($fields = $this->modx->getCollection('msfmFields', $q)) {
-                foreach ($fields as $field) {
-                    $null = $field->dbnull ? 'true' : 'false';
-                    $default = '';
-                    $defaultType = $this->modx->driver->getPhpType($field->dbtype);
-                    $phpType = $field->xtype ? $this->xtypeToPhpType($field->xtype, $defaultType) : $defaultType;
-                    if ($field->dbdefault == 'user_defined') {
-                        $default = $field->default_value;
-                    }
-
-                    switch ($defaultType) {
-                        case 'integer':
-                        case 'boolean':
-                            $default = $default != '' ? (integer)$default : 0;
-                            break;
-                        case 'float':
-                        case 'numeric':
-                            $default = $default != '' ? (float)$default : 0;
-                            break;
-                        default:
-                            break;
-                    }
-                    $map['fields'][$field->name] = $default;
-                    $map['fieldMeta'][$field->name] = array();
-                    $map['fieldMeta'][$field->name]['dbtype'] = $field->dbtype;
-                    $map['fieldMeta'][$field->name]['precision'] = $field->dbprecision;
-                    $map['fieldMeta'][$field->name]['phptype'] = $phpType;
-                    $map['fieldMeta'][$field->name]['default'] = $default;
-                    $map['fieldMeta'][$field->name]['null'] = (!empty($null) && strtolower($null) !== 'false') ? true : false;
-                }
-            }
-            $manager->setMap($map);
-            $manager->outputMap($this->config['ms2PluginsCorePath']);
-        }
-    }
-
-    /**
-     * @param string $sql
+     * Выполнение SQL
+     * @param $sql
+     * @param $method
      * @return bool
+     * @throws Exception
      */
     private function sql($sql, $method)
     {
-        if ($this->table and $this->field) {
+        if ($this->table && $this->field) {
             if ($this->modx->exec($sql) !== false) {
                 return true;
-            } else {
-                $this->modx->log(modX::LOG_LEVEL_ERROR, $sql);
-                $this->modx->log(modX::LOG_LEVEL_ERROR, 'Columps ' . print_r($this->showFields(), 1));
-                $this->modx->log(modX::LOG_LEVEL_ERROR, "Error {$this->table}->{$this->field}: " . print_r($this->modx->errorInfo(), true), '', __METHOD__, __FILE__, __LINE__);
-                throw new Exception('[' . $method . '] ' . print_r($this->modx->errorInfo(), 1));
             }
+
+            $this->modx->log(modX::LOG_LEVEL_ERROR, $sql);
+            $this->modx->log(modX::LOG_LEVEL_ERROR, 'Columps ' . print_r($this->showFields(), 1));
+            $this->modx->log(modX::LOG_LEVEL_ERROR, "Error {$this->table}->{$this->field}: " . print_r($this->modx->errorInfo(), true), '', __METHOD__, __FILE__, __LINE__);
+            throw new Exception('[' . $method . '] ' . print_r($this->modx->errorInfo(), 1));
         }
         return false;
     }
@@ -296,11 +250,11 @@ class msAddFieldFieldManagement
 
         $cache = $this->modx->getCacheManager();
 
-        $content = $this->getTemplateProductDataXtype($xtype, date('d.m.Y', time()));
+        $content = $this->getTemplateProductDataXtype($xtype, date('d.m.Y'));
         if (!$cache->writeFile($pluginsAssetsPath, $content)) {
             $this->modx->log(modX::LOG_LEVEL_ERROR, "Не удалось создать файл {$pluginsAssetsPath}", '', __METHOD__, __FILE__, __LINE__);
         }
-        $content = $this->getTemplateProductData($data, date('d.m.Y', time()));
+        $content = $this->getTemplateProductData($data, date('d.m.Y'));
         if (!$cache->writeFile($pluginsCorePath, $content)) {
             $this->modx->log(modX::LOG_LEVEL_ERROR, "Не удалось создать файл {$pluginsCorePath}", '', __METHOD__, __FILE__, __LINE__);
         }
@@ -319,10 +273,9 @@ class msAddFieldFieldManagement
     }
 
     /**
-     * Return the class platform template for the class files.
-     *
-     * @access public
-     * @return string The class platform template.
+     * @param $data
+     * @param $date
+     * @return string
      */
     private function getTemplateProductDataXtype($data, $date)
     {
@@ -356,7 +309,7 @@ class msAddFieldFieldManagement
         }
 
 
-        $template = <<<EOD
+        return <<<EOD
 /**
  * Created by Andrey Stepanenko.
  * User: webnitros
@@ -376,14 +329,12 @@ class msAddFieldFieldManagement
     }
 }
 EOD;
-        return $template;
     }
 
     /**
-     * Return the class platform template for the class files.
-     *
-     * @access public
-     * @return string The class platform template.
+     * @param $data
+     * @param $date
+     * @return string
      */
     private function getTemplateProductData($data, $date)
     {

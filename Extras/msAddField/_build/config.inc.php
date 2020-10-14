@@ -11,7 +11,7 @@ if (!defined('MODX_CORE_PATH')) {
 return [
     'name' => 'msAddField',
     'name_lower' => 'msaddfield',
-    'version' => '1.0.4',
+    'version' => '1.0.5',
     'release' => 'beta',
     // Install package to site right after build
     'install' => true,

@@ -8,14 +8,11 @@ class msAddField
     /** @var array() $config */
     public $config = array();
 
-    /** @var array $initialized */
-    public $initialized = array();
-
     /**
      * @param modX $modx
      * @param array $config
      */
-    function __construct(modX &$modx, array $config = [])
+    public function __construct(modX $modx, array $config = [])
     {
         $this->modx =& $modx;
         $corePath = MODX_CORE_PATH . 'components/msaddfield/';
@@ -86,7 +83,7 @@ class msAddField
                     // Добавление файлов если их нету
                     $this->addPluginsMinishop2();
 
-                    if (!empty($_GET['a']) and ($_GET['a'] == 'resource/update' or $_GET['a'] == 'resource/create')) {
+                    if (!empty($_GET['a']) && ($_GET['a'] === 'resource/update' || $_GET['a'] === 'resource/create')) {
                         // Добавления описания в словари для полей в карточке товара
                         $this->addFieldsOptionsProduct();
                     }
@@ -95,20 +92,20 @@ class msAddField
         }
     }
 
-    /* @var msAddFieldFieldManagement $fieldManagement */
-    protected $fieldManagement = null;
+    /* @var msAddFieldManagement $fieldManagement */
+    protected $fieldManagement;
 
     /**
      * Класс для управление полями в таблице ms2_products
-     * @return msAddFieldFieldManagement|null
+     * @return msAddFieldManagement|null
      */
     public function loadFieldManagement()
     {
         if (is_null($this->fieldManagement)) {
-            if (!class_exists('msAddFieldFieldManagement')) {
-                require_once dirname(dirname(__FILE__)) . '/lib/fieldmanagement.php';
+            if (!class_exists('msAddFieldManagement')) {
+                require_once dirname(__DIR__) . '/lib/msAddFieldManagement.php';
             }
-            $this->fieldManagement = new msAddFieldFieldManagement($this);
+            $this->fieldManagement = new msAddFieldManagement($this);
         }
         return $this->fieldManagement;
     }
