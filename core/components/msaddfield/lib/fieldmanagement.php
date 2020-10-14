@@ -73,7 +73,7 @@ class msAddFieldFieldManagement
      * Проверка существования поля в таблице
      * @return bool
      */
-    public function isField()
+    public function hasField()
     {
         $fields = $this->showFields();
         if (array_search($this->fieldClear, $fields)) {
@@ -109,7 +109,7 @@ class msAddFieldFieldManagement
     public function addField()
     {
 
-        if (!$this->isField()) {
+        if (!$this->hasField()) {
             $after = '';
             if ($this->prefix) {
                 $after = $this->after();
@@ -139,7 +139,7 @@ class msAddFieldFieldManagement
      */
     public function removeField()
     {
-        if ($this->isField()) {
+        if ($this->hasField()) {
             $this->sql("ALTER TABLE {$this->table} DROP COLUMN {$this->field}", __METHOD__);
         }
         return true;
@@ -152,7 +152,7 @@ class msAddFieldFieldManagement
      */
     public function addIndex()
     {
-        if ($this->isField()) {
+        if ($this->hasField()) {
             if (!$this->hasIndex()) {
                 $this->sql("ALTER TABLE {$this->table} ADD INDEX ({$this->field})", __METHOD__);
             }
@@ -193,13 +193,12 @@ class msAddFieldFieldManagement
         $manager = $this->getManager();
         $map = array('fields' => array(), 'fieldMeta' => array());
         if ($manager) {
-            $q = $this->modx->newQuery('MsfmFields');
+            $q = $this->modx->newQuery('msfmFields');
             $q->where(array('enable' => 1));
             $q->sortby('rank', 'ASC');
-            if ($fields = $this->modx->getCollection('MsfmFields', $q)) {
+            if ($fields = $this->modx->getCollection('msfmFields', $q)) {
                 foreach ($fields as $field) {
                     $null = $field->dbnull ? 'true' : 'false';
-                    $key = $manager->getIndex('');
                     $default = '';
                     $defaultType = $this->modx->driver->getPhpType($field->dbtype);
                     $phpType = $field->xtype ? $this->xtypeToPhpType($field->xtype, $defaultType) : $defaultType;
@@ -210,7 +209,6 @@ class msAddFieldFieldManagement
                     switch ($defaultType) {
                         case 'integer':
                         case 'boolean':
-                        case 'bit':
                             $default = $default != '' ? (integer)$default : 0;
                             break;
                         case 'float':
@@ -247,7 +245,7 @@ class msAddFieldFieldManagement
                 $this->modx->log(modX::LOG_LEVEL_ERROR, $sql);
                 $this->modx->log(modX::LOG_LEVEL_ERROR, 'Columps ' . print_r($this->showFields(), 1));
                 $this->modx->log(modX::LOG_LEVEL_ERROR, "Error {$this->table}->{$this->field}: " . print_r($this->modx->errorInfo(), true), '', __METHOD__, __FILE__, __LINE__);
-                throw new Exception('[' . $method . '] ' . print_r($this->modx->errorInfo(),1));
+                throw new Exception('[' . $method . '] ' . print_r($this->modx->errorInfo(), 1));
             }
         }
         return false;
@@ -271,16 +269,18 @@ class msAddFieldFieldManagement
         $q = $this->modx->newQuery('msafField');
         if ($objectList = $this->modx->getCollection('msafField', $q)) {
             foreach ($objectList as $object) {
-                $name = $object->get('name');
-                $meta = $object->getMeta();
-                $fieldMeta[$name] = $meta;
-                $fields[$name] = $meta['default'];
+                if ($object->hasField()) {
+                    $name = $object->get('name');
+                    $meta = $object->getMeta();
+                    $fieldMeta[$name] = $meta;
+                    $fields[$name] = $meta['default'];
 
-                if ($object->isIndexes()) {
-                    $indexes[$name] = $object->getIndexData();
-                }
-                if ($object->isShowProduct()) {
-                    $xtype[$name] = $object->getMetaXtype();
+                    if ($object->isIndexes()) {
+                        $indexes[$name] = $object->getIndexData();
+                    }
+                    if ($object->isShowProduct()) {
+                        $xtype[$name] = $object->getMetaXtype();
+                    }
                 }
             }
         }

@@ -65,7 +65,7 @@ class msafFieldGetListProcessor extends modObjectGetListProcessor
         $array['actions'][] = '-';
         $array['has_index'] = $object->hasIndex();
 
-        $array['create_base'] = $object->isField('msProductData');
+        $array['create_base'] = $object->hasField();
         if (!$array['create_base']) {
             // _table_create
             $array['actions'][] = [

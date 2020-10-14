@@ -23,9 +23,12 @@ class msafFieldExtensionProcessor extends modObjectProcessor
 
         /** @var msafField $object */
         if (!$object = $this->modx->getObject($this->classKey, $id)) {
-            return $this->failure($this->modx->lexicon('modextra_item_err_nf'));
+            return $this->failure($this->modx->lexicon('msaddfield_field_err_nf'));
         }
 
+        if (!$object->hasField()) {
+            return $this->failure($this->modx->lexicon('msaddfield_field_err_has_field_extension'));
+        }
         try {
             $object->extension();
         } catch (Exception $e) {

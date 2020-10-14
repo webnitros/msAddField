@@ -28,7 +28,7 @@ class msafFieldTableCreateProcessor extends modObjectProcessor
             return $this->failure($this->modx->lexicon('modextra_item_err_nf'));
         }
 
-        if ($object->isField('msProductData')) {
+        if ($object->hasField()) {
             return $this->failure('Поле уже создано в базе');
         }
 

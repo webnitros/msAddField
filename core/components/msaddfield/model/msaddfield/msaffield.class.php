@@ -324,10 +324,10 @@ class msafField extends xPDOSimpleObject {
      * Проверка существования поля в таблице
      * @return bool
      */
-    public function isField()
+    public function hasField()
     {
         if ($manager = $this->getManager()) {
-            return $manager->isField();
+            return $manager->hasField();
         }
         return false;
     }
@@ -400,6 +400,7 @@ class msafField extends xPDOSimpleObject {
         }
         return false;
     }
+
 
 
     /**

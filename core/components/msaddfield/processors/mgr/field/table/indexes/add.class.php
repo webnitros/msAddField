@@ -27,7 +27,7 @@ class msafFieldTableIndexesProcessor extends modObjectProcessor
         }
 
 
-        if (!$object->isField('msProductData')) {
+        if (!$object->hasField()) {
             return $this->failure('Поле отсутствует в базе');
         }
 

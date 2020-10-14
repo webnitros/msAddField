@@ -39,3 +39,6 @@ $_lang['msaddfield_field_update'] = 'Обновить поле';
 $_lang['msaddfield_action_remove'] = 'Удалить поле';
 $_lang['msaddfield_action_updatetable'] = 'Создать поле в базе';
 $_lang['msaddfield_action_removetable'] = 'Удалить поле в базе';
+
+$_lang['msaddfield_field_err_nf'] = 'Указанное поле не существует';
+$_lang['msaddfield_field_err_has_field_extension'] = 'Для расширения карты полей, его необходимо создать в базе данных';
