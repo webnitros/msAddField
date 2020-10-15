@@ -69,7 +69,7 @@ Ext.extend(msAddField.grid.Field, msAddField.grid.Default, {
             }
         })
         w.reset()
-        w.setValues({active: true})
+        w.setValues({active: true,show_card: true,сreate_in_base: true})
         w.show(e.target)
     },
 

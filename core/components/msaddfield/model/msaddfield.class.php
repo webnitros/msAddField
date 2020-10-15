@@ -78,7 +78,7 @@ class msAddField
     {
         switch ($event->name) {
             case 'OnMODXInit':
-                if ($this->modx->context->key = 'mgr') {
+                if ($this->modx->context->key === 'mgr') {
 
                     // Добавление файлов если их нету
                     $this->addPluginsMinishop2();

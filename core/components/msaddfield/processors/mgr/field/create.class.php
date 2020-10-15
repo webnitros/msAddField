@@ -65,6 +65,9 @@ class msafFieldCreateProcessor extends modObjectCreateProcessor
      */
     public function afterSave()
     {
+        if ($this->setCheckbox('сreate_in_base')) {
+            $this->object->addField();
+        }
         return true;
     }
 

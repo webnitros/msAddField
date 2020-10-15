@@ -2,6 +2,10 @@ msAddField.window.CreateField = function (config) {
     config = config || {}
     config.url = msAddField.config.connector_url
 
+    if (config.record === undefined || config.record.object === 'undefined') {
+        config.id = 'msaddfield-field'
+    }
+
     Ext.applyIf(config, {
         title: _('msaddfield_field_create'),
         width: 800,
@@ -34,7 +38,7 @@ Ext.extend(msAddField.window.CreateField, msAddField.window.Default, {
                                 xtype: 'textfield',
                                 fieldLabel: _('msaddfield_field_name'),
                                 name: 'name',
-                                id: config.id + '-name',
+                                id: config.id +'-name',
                                 anchor: '99%',
                                 allowBlank: false,
                                 vtype: 'alphanum',
@@ -67,53 +71,6 @@ Ext.extend(msAddField.window.CreateField, msAddField.window.Default, {
                         ],
                     }]
             },
-            /*{
-                layout: 'column',
-                items: [
-                    {
-                        columnWidth: .5,
-                        layout: 'form',
-                        items: [
-                            {
-                                xtype: 'textfield',
-                                fieldLabel: _('msaddfield_field_alias_import'),
-                                name: 'alias_import',
-                                id: config.id + '-alias_import',
-                                anchor: '99%',
-                                allowBlank: false
-                            },
-                            {
-                                xtype: 'label',
-                                html: 'В алиасе нужно написать название колонки для импорта',
-                                cls: 'desc-under',
-                            },
-                        ],
-                    }, {
-                        columnWidth: .5,
-                        layout: 'form',
-                        items: [
-                            {
-                                xtype: 'textfield',
-                                fieldLabel: _('msaddfield_field_default'),
-                                name: 'default',
-                                id: config.id + '-default',
-                                anchor: '100%',
-                                allowBlank: false,
-                                readOnly: isCreate
-                            },
-                            {
-                                xtype: 'label',
-                                html: 'Значение по умолчанию которые будет установленов в этом поле',
-                                cls: 'desc-under',
-                            }
-                        ],
-                    }]
-            },*/
-
-
-
-
-
             {
                 layout: 'column',
                 items: [
@@ -129,6 +86,23 @@ Ext.extend(msAddField.window.CreateField, msAddField.window.Default, {
                                 id: config.id + '-title',
                                 anchor: '99%',
                                 allowBlank: false,
+                                listeners: {
+                                    'keyup': {
+                                        fn: function (f) {
+                                            var title = Ext.util.Format.stripTags(f.getValue())
+                                            this.translitAlias(title)
+                                        }, scope: this
+                                    }
+                                    // also do realtime transliteration of alias on blur of pagetitle field
+                                    // as sometimes (when typing very fast) the last letter(s) are not catched
+                                    , 'blur': {
+                                        fn: function (f, e) {
+                                            var title = Ext.util.Format.stripTags(f.getValue())
+                                            this.translitAlias(title)
+                                        }, scope: this
+                                    }
+                                }
+
                             },
                             {
                                 xtype: 'label',
@@ -174,21 +148,48 @@ Ext.extend(msAddField.window.CreateField, msAddField.window.Default, {
                 name: 'active',
                 id: config.id + '-active',
                 checked: true,
-            },{
+            }, {
                 xtype: 'label',
                 html: 'Если поле отключено то оно не будет отображать в карточке товара и не будет расширена карта полей',
                 cls: 'desc-under',
-            }/*, {
-                xtype: 'xcheckbox',
-                boxLabel: _('msaddfield_field_indexes'),
-                name: 'indexes',
-                id: config.id + '-indexes',
+            }, {
+                xtype: isCreate ? 'hidden' :'xcheckbox',
+                boxLabel: 'Создать в базе данных',
+                name: 'сreate_in_base',
+                id: config.id + '-сreate_in_base',
                 checked: true,
-                readOnly: isCreate
-            }*/
+            }, {
+                xtype: 'label',
+                html: 'Чтобы поле сразу попало в плагины',
+                cls: 'desc-under',
+            }
         ]
+    },
 
+    translitAlias: function (string) {
+        if (string === '' || this.config.record.object === 'undefined') {
+            return true;
+        }
+
+        MODx.Ajax.request({
+            url: msAddField.config.connector_url
+            , params: {
+                action: 'mgr/field/translit'
+                , string: string
+            }
+            , listeners: {
+                'success': {
+                    fn: function (r) {
+                        var alias = Ext.getCmp('msaddfield-field-name')
+                        if (alias) {
+                            alias.setValue(r.object.transliteration);
+                        }
+                    }, scope: this
+                }
+            }
+        })
     }
+
 })
 Ext.reg('msaddfield-field-window-create', msAddField.window.CreateField)
 
